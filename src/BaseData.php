@@ -2,6 +2,7 @@
 
 namespace Zendrop\Data;
 
+use Attribute;
 use InvalidArgumentException;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -9,22 +10,33 @@ use ReflectionNamedType;
 use ReflectionParameter;
 use RuntimeException;
 use Zendrop\Data\Attributes\ArrayOf;
+use Zendrop\Data\Attributes\MapInputName;
 use Zendrop\Data\Exceptions\CannotCreateData;
+use Zendrop\Data\Mappers\NameMapperInterface;
 
 abstract class BaseData
 {
     public static function from(array $payload): static
     {
-        $className = static::class;
-        $reflectionClass = new ReflectionClass($className);
+        $reflectionClass = new ReflectionClass(static::class);
 
         $constructor = $reflectionClass->getConstructor();
         $parameters = $constructor->getParameters();
 
         $resolvedParameters = [];
 
-        foreach ($parameters as $parameter) {
-            $resolvedParameters[] = self::resolveParameterValue($parameter, $payload, $className);
+        $classNameMapper = null;
+        if (self::hasAttribute($reflectionClass, MapInputName::class)) {
+            $classNameMapper = self::getAttributeValue($reflectionClass, MapInputName::class);
+        }
+
+        foreach ($parameters as $reflectionParameter) {
+            $propertyNameMapper = null;
+            if (self::hasAttribute($reflectionParameter, MapInputName::class)) {
+                $propertyNameMapper = self::getAttributeValue($reflectionParameter, MapInputName::class);
+            }
+
+            $resolvedParameters[] = self::resolveParameterValue($reflectionParameter, $payload, $classNameMapper ?? $propertyNameMapper);
         }
 
         return $reflectionClass->newInstanceArgs($resolvedParameters);
@@ -33,13 +45,17 @@ abstract class BaseData
     private static function resolveParameterValue(
         ReflectionParameter $parameter,
         array $payload,
-        string $className
+        ?string $nameMapperClass
     ): int|float|string|bool|array|null|BaseData {
-        $value = $payload[$parameter->getName()] ?? null;
+        $name = ($nameMapperClass !== null)
+            ? (new ($nameMapperClass))->map($parameter->getName())
+            : $parameter->getName();
+
+        $value = $payload[$name] ?? null;
 
         if ($value === null && !self::isParameterNullable($parameter)) {
             throw new CannotCreateData(
-                "Could not create `{$className}`: Missing required parameter `{$parameter->getName()}`."
+                "Missing required parameter `{$parameter->getName()}`."
             );
         }
 
@@ -49,7 +65,9 @@ abstract class BaseData
 
         if (!self::isValueTypeAcceptableByParameter($value, $parameter)) {
             throw new CannotCreateData(
-                "Could not create `{$className}`: The provided value for parameter `{$parameter->getName()}` has not expected type " . gettype($value)
+                "The provided value for parameter `{$parameter->getName()}` has not expected type " . gettype(
+                    $value
+                )
             );
         }
 
@@ -81,7 +99,7 @@ abstract class BaseData
             return $subclassName::from($array);
         }
 
-        if (!self::hasArrayOfAttribute($parameter)) {
+        if (!self::hasAttribute($parameter, ArrayOf::class)) {
             return $array;
         }
 
@@ -93,7 +111,7 @@ abstract class BaseData
         array $array
     ): array {
         /** @var class-string<BaseData>|string $expectedItemsType */
-        $expectedItemsType = self::getArrayOfAttributeValue($parameter);
+        $expectedItemsType = self::getAttributeValue($parameter, ArrayOf::class);
 
         $isSubclassExpected = false;
         if (class_exists($expectedItemsType)) {
@@ -113,7 +131,9 @@ abstract class BaseData
             if ($isSubclassExpected) {
                 if (!is_array($item)) {
                     throw new \Exception(
-                        "`{$parameter->getName()}` parameter should contains array of arrays, but " . gettype($item) . " given in `{$key}` key of payload"
+                        "`{$parameter->getName()}` parameter should contains array of arrays, but " . gettype(
+                            $item
+                        ) . " given in `{$key}` key of payload"
                     );
                 }
 
@@ -168,7 +188,9 @@ abstract class BaseData
         }
 
         if (count($subclasses) > 1) {
-            throw new \Exception("Error in `{$parameter->getName()}` parameter. More than one data types is not supported.");
+            throw new \Exception(
+                "Error in `{$parameter->getName()}` parameter. More than one data types is not supported."
+            );
         }
 
         if (count($subclasses) === 0) {
@@ -204,27 +226,28 @@ abstract class BaseData
         return false;
     }
 
-    private static function getArrayOfAttributeValue(ReflectionParameter $parameter): string
+    private static function getAttributeValue(ReflectionParameter|ReflectionClass $attributable, string $attributeClassName): string
     {
-        $attributes = $parameter->getAttributes(ArrayOf::class);
+        $attributes = $attributable->getAttributes($attributeClassName);
 
         if (count($attributes) > 1) {
-            throw new \Exception('$parameter->name contains more than one ArrayOf attribute');
+            throw new \Exception("$attributable->name contains more than one `{$attributeClassName}` attribute");
+        } elseif (count($attributes) === 0) {
+            throw new \Exception("$attributable->name does not contains `{$attributeClassName}` attribute");
         }
 
         /** @var ReflectionAttribute|null $attribute */
         $attribute = array_pop($attributes);
 
-        if ($attribute === null) {
-            throw new RuntimeException("Parameter has not " . ArrayOf::class . ' attribute');
-        }
-
         return $attribute->getArguments()[0];
     }
 
-    private static function hasArrayOfAttribute(ReflectionParameter $parameter): bool
+    /**
+     * @param  class-string<Attribute>  $attributeClassName
+     */
+    private static function hasAttribute(ReflectionParameter|ReflectionClass $attributable, string $attributeClassName): bool
     {
-        return count($parameter->getAttributes(ArrayOf::class)) > 0;
+        return count($attributable->getAttributes($attributeClassName)) > 0;
     }
 
     /**
