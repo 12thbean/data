@@ -113,6 +113,8 @@ abstract class Data
 
         if ($reflectionParameterType instanceof \ReflectionNamedType) {
             $acceptableValueTypes[] = new ParameterType($reflectionParameterType->getName());
+
+            // Adds "null" for nullable types (e.g., "?string"), except 'mixed' which implicitly includes it
             if ($reflectionParameterType->allowsNull() && $reflectionParameterType->getName() !== 'mixed') {
                 $acceptableValueTypes[] = new ParameterType(ParameterType::NULL);
             }
