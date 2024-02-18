@@ -4,7 +4,15 @@ namespace Zendrop\Data;
 
 interface ParserInterface
 {
-    public function canHandle(mixed $value): bool;
+    /**
+     * @param ParameterType[] $acceptableTypes
+     * @param \Attribute[]    $attributes
+     */
+    public function canHandle(mixed $value, array $acceptableTypes, array $attributes): bool;
 
-    public function handle(mixed $value): mixed;
+    /**
+     * @param ParameterType[] $acceptableTypes
+     * @param \Attribute[]    $attributes
+     */
+    public function handle(mixed $value, array $acceptableTypes, array $attributes): mixed;
 }

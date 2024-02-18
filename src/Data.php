@@ -5,26 +5,38 @@ namespace Zendrop\Data;
 use Illuminate\Support\Str;
 use Zendrop\Data\Exceptions\InvalidValueException;
 use Zendrop\Data\Exceptions\ParameterNotFoundException;
-use Zendrop\Data\Parsers\StringParser;
+use Zendrop\Data\Parsers\ArrayParser;
+use Zendrop\Data\Parsers\GenericParser;
+use Zendrop\Data\Parsers\ObjectParser;
 
 abstract class Data
 {
-    private static ?array $parsers = null;
+    /**
+     * @var ParserInterface[]|null
+     */
+    private static ?array $instantiatedParsers = null;
 
-    public static function from(array $payload, bool $strict = false): static
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public static function from(array $payload, bool $useStrictKeyMatching = false): static
     {
+        if (!$useStrictKeyMatching) {
+            $payload = self::normalizePayloadKeys($payload);
+        }
+
         $reflectionClass = new \ReflectionClass(static::class);
         $constructor = $reflectionClass->getConstructor();
 
         $parsedValues = [];
         foreach ($constructor->getParameters() as $constructorParameter) {
-            $acceptableTypes = self::getParameterAcceptableValueTypes($constructorParameter);
-            $attributes = $constructorParameter->getAttributes();
+            $acceptableTypes = self::getParameterTypes($constructorParameter);
+            $attributes = self::getParameterAttributes($constructorParameter);
 
             $value = self::extractParameterValueFromPayload(
-                parameter: $constructorParameter,
+                parameterName: $constructorParameter->getName(),
                 payload: $payload,
-                shouldReturnNullIfNotFound: self::isParameterNullable($acceptableTypes)
+                isNullable: self::isParameterNullable($acceptableTypes)
             );
 
             $parsedValues[] = self::parseValue($value, $acceptableTypes, $attributes);
@@ -33,39 +45,47 @@ abstract class Data
         return $reflectionClass->newInstanceArgs($parsedValues);
     }
 
-    private static function extractParameterValueFromPayload(
-        \ReflectionParameter $parameter,
-        array $payload,
-        bool $shouldReturnNullIfNotFound,
-        bool $useStrictKeyMatching = false
-    ): mixed {
-        $possibleKeys = [$parameter->getName()];
+    /**
+     * @param array<string, mixed> $payload $payload
+     */
+    private static function normalizePayloadKeys(array $payload): array
+    {
+        $result = [];
 
-        if (!$useStrictKeyMatching) {
-            $possibleKeys[] = Str::snake($parameter->getName());
-            $possibleKeys[] = Str::kebab($parameter->getName());
+        foreach ($payload as $key => $value) {
+            $result[Str::camel($key)] = $value;
         }
 
-        foreach ($possibleKeys as $key) {
-            if (isset($payload[$key])) {
-                return $payload[$key];
-            }
-        }
-
-        if ($shouldReturnNullIfNotFound) {
-            return null;
-        }
-
-        throw new ParameterNotFoundException("Parameter `{$parameter->getName()}` not found in the payload.");
+        return $result;
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     *
+     * @throws ParameterNotFoundException
+     */
+    private static function extractParameterValueFromPayload(string $parameterName, array $payload, bool $isNullable): mixed
+    {
+        $value = $payload[$parameterName] ?? null;
+
+        if (null === $value && !$isNullable) {
+            throw new ParameterNotFoundException("Parameter `{$parameterName}` not found in the payload.");
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param ParameterType[] $acceptableTypes
+     * @param \Attribute[]    $attributes
+     *
+     * @throws InvalidValueException
+     */
     private static function parseValue(mixed $originalValue, array $acceptableTypes, array $attributes): mixed
     {
-        $acceptableTypes = self::sortValueTypesByPriority($acceptableTypes);
-        foreach ($acceptableTypes as $acceptableType) {
-            $parser = self::getParser($acceptableType);
-            if ($parser->canHandle($originalValue)) {
-                return $parser->handle($originalValue);
+        foreach (self::getParsers() as $parser) {
+            if ($parser->canHandle($originalValue, $acceptableTypes, $attributes)) {
+                return $parser->handle($originalValue, $acceptableTypes, $attributes);
             }
         }
 
@@ -74,62 +94,57 @@ abstract class Data
     }
 
     /**
-     * @return ValueType[]
+     * @return ParameterType[]
      */
-    private static function getParameterAcceptableValueTypes(\ReflectionParameter $parameter): array
+    private static function getParameterTypes(\ReflectionParameter $parameter): array
     {
+        /** @var \ReflectionUnionType|\ReflectionNamedType|null $reflectionParameterType */
         $reflectionParameterType = $parameter->getType();
 
         if (null === $reflectionParameterType) {
-            return [ValueType::MIXED];
+            return [ParameterType::MIXED];
         }
 
-        /** @var ValueType[] $acceptableValueTypes */
+        /** @var ParameterType[] $acceptableValueTypes */
         $acceptableValueTypes = [];
 
         if ($reflectionParameterType instanceof \ReflectionNamedType) {
-            $acceptableValueTypes[] = ValueType::from($reflectionParameterType->getName());
+            $acceptableValueTypes[] = new ParameterType($reflectionParameterType->getName());
             if ('mixed' !== $reflectionParameterType->getName() && $reflectionParameterType->allowsNull()) {
-                $acceptableValueTypes[] = ValueType::NULL;
+                $acceptableValueTypes[] = new ParameterType(ParameterType::NULL);
             }
 
             return $acceptableValueTypes;
         }
 
         foreach ($reflectionParameterType->getTypes() as $t) {
-            $acceptableValueTypes[] = ValueType::from($t->getName());
+            $acceptableValueTypes[] = new ParameterType($t->getName());
         }
 
         return $acceptableValueTypes;
     }
 
-    private static function sortValueTypesByPriority(array $valueTypes): array
+    /**
+     * @return \Attribute[]
+     */
+    private static function getParameterAttributes(\ReflectionParameter $parameter): array
     {
-        $priorities = [
-            ValueType::NULL->value => 1,
-            ValueType::ARRAY->value => 2,
-            ValueType::STRING->value => 3,
-            ValueType::INT->value => 4,
-            ValueType::FLOAT->value => 5,
-            ValueType::BOOL->value => 6,
-            ValueType::ENUM->value => 7,
-            ValueType::OBJECT->value => 8,
-        ];
+        $result = [];
 
-        usort($valueTypes, function (ValueType $a, ValueType $b) use ($priorities) {
-            return $priorities[$a->value] <=> $priorities[$b->value];
-        });
+        foreach ($parameter->getAttributes() as $attribute) {
+            $result[] = $attribute->newInstance();
+        }
 
-        return $valueTypes;
+        return $result;
     }
 
     /**
-     * @param ValueType[] $valueTypes
+     * @param ParameterType[] $valueTypes
      */
     private static function isParameterNullable(array $valueTypes): bool
     {
         foreach ($valueTypes as $valueType) {
-            if (ValueType::NULL === $valueType || ValueType::MIXED === $valueType) {
+            if ($valueType->isNull() || $valueType->isMixed()) {
                 return true;
             }
         }
@@ -137,18 +152,19 @@ abstract class Data
         return false;
     }
 
-    private static function getParser(ValueType $valueType): ParserInterface
+    /**
+     * @return ParserInterface[]
+     */
+    private static function getParsers(): array
     {
-        if (null === self::$parsers) {
-            self::$parsers = [
-                ValueType::STRING->value => new StringParser(),
+        if (null === self::$instantiatedParsers) {
+            self::$instantiatedParsers = [
+                new ArrayParser(new ObjectParser()),
+                new ObjectParser(),
+                new GenericParser(),
             ];
         }
 
-        if (!isset(self::$parsers[ValueType::STRING->value])) {
-            throw new ParameterNotFoundException("Parser not found for value type `{$valueType->name}`.");
-        }
-
-        return self::$parsers[ValueType::STRING->value];
+        return self::$instantiatedParsers;
     }
 }
