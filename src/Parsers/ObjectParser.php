@@ -2,6 +2,8 @@
 
 namespace Zendrop\Data\Parsers;
 
+use Zendrop\Data\Data;
+use Zendrop\Data\Exceptions\ObjectInstantiatingException;
 use Zendrop\Data\ParameterType;
 use Zendrop\Data\ParserInterface;
 
@@ -18,21 +20,19 @@ class ObjectParser implements ParserInterface
             return null;
         }
 
-        if (!is_array($value)) {
-            throw new \InvalidArgumentException(sprintf('Expected first argument to be array, %s given.', gettype($value)));
-        }
-
         $targetType = $this->findObjectTypeAmongAcceptableTypes($acceptableTypes);
 
         if (!$targetType) {
-            throw new \RuntimeException(sprintf('%s cannot handle any of the provided acceptable types.', static::class));
+            throw new \RuntimeException(
+                sprintf('%s cannot handle any of the provided acceptable types.', static::class)
+            );
         }
 
         return $this->instantiateObject($targetType->type, $value);
     }
 
     /**
-     * @param ParameterType[] $acceptableTypes
+     * @param  ParameterType[]  $acceptableTypes
      */
     private function findObjectTypeAmongAcceptableTypes(array $acceptableTypes): ?ParameterType
     {
@@ -46,22 +46,17 @@ class ObjectParser implements ParserInterface
     }
 
     /**
-     * @param class-string         $className
-     * @param array<string, mixed> $value
+     * @param  class-string<Data|\BackedEnum>  $className
+     * @param  array<string, mixed>|int|float|string|bool  $value
      */
-    private function instantiateObject(string $className, array $value): object
+    private function instantiateObject(string $className, array|int|float|string|bool $value): object
     {
-        if (method_exists($className, 'from') && $this->isMethodStatic($className, 'from')) {
+        if (is_subclass_of($className, Data::class) || is_subclass_of($className, \BackedEnum::class)) {
             return $className::from($value);
         }
 
-        return new $className(...$value);
-    }
-
-    private function isMethodStatic(string $className, string $methodName): bool
-    {
-        $reflectionMethod = new \ReflectionMethod($className, $methodName);
-
-        return $reflectionMethod->isStatic();
+        throw new ObjectInstantiatingException(
+            'Instantiated object should be inheritor of `' . Data::class . '` or `' . \BackedEnum::class . '`'
+        );
     }
 }

@@ -37,15 +37,19 @@ class ArrayParser implements ParserInterface
      * @param ParameterType[] $acceptableTypes
      * @param \Attribute[]    $attributes
      */
-    public function handle(mixed $value, array $acceptableTypes, array $attributes): mixed
+    public function handle(mixed $value, array $acceptableTypes, array $attributes): array
     {
+        if (null === $value) {
+            return [];
+        }
+
         $attributeArrayOf = $this->findAttributeArrayOf($attributes);
 
         if (null === $attributeArrayOf) {
-            throw new InvalidArgumentException(sprintf('Argument `attributes` must contain at least one instance of the `%s` attribute.', ArrayOf::class));
+            throw new InvalidArgumentException(
+                sprintf('Argument `attributes` must contain at least one instance of the `%s` attribute.', ArrayOf::class)
+            );
         }
-
-        $this->validateArrayTypeIsAcceptable($acceptableTypes);
 
         return $this->parseValues($value, $attributeArrayOf);
     }
@@ -56,12 +60,12 @@ class ArrayParser implements ParserInterface
     private function validateArrayTypeIsAcceptable(array $acceptableTypes): void
     {
         foreach ($acceptableTypes as $acceptableType) {
-            if ($acceptableType->isArray()) {
+            if ($acceptableType->isArray() || $acceptableType->isMixed()) {
                 return;
             }
         }
 
-        throw new InvalidAttributeException('Array type is not acceptable. Check type hints for the inheritor of '.Data::class.' which uses ArrayOf attribute.');
+        throw new InvalidAttributeException('Array type must be acceptable.');
     }
 
     /**
@@ -81,7 +85,7 @@ class ArrayParser implements ParserInterface
     /**
      * @param array<int, int|float|string|array> $value
      *
-     * @return array<int, int|float|string|object>
+     * @return array<int, int|float|string|Data|\BackedEnum>
      *
      * @throws InvalidValueException
      * @throws UnsupportedValueArrayOfException
@@ -113,7 +117,9 @@ class ArrayParser implements ParserInterface
             $filtered = filter_var($item, $filter, FILTER_NULL_ON_FAILURE);
             if (null === $filtered) {
                 $providedType = gettype($item);
-                throw new InvalidValueException("Invalid value encountered in the array. Expected a value of type '{$attributeArrayOf->type}', but an incompatible value `{$providedType}` type was found.");
+                throw new InvalidValueException(
+                    "Invalid value encountered in the array. Expected a value of type '{$attributeArrayOf->type}', but an incompatible value `{$providedType}` type was found."
+                );
             }
             $result[] = $filtered;
         }

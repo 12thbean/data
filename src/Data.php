@@ -64,8 +64,11 @@ abstract class Data
      *
      * @throws ParameterNotFoundException
      */
-    private static function extractParameterValueFromPayload(string $parameterName, array $payload, bool $isNullable): mixed
-    {
+    private static function extractParameterValueFromPayload(
+        string $parameterName,
+        array $payload,
+        bool $isNullable
+    ): mixed {
         $value = $payload[$parameterName] ?? null;
 
         if (null === $value && !$isNullable) {
@@ -102,7 +105,7 @@ abstract class Data
         $reflectionParameterType = $parameter->getType();
 
         if (null === $reflectionParameterType) {
-            return [ParameterType::MIXED];
+            return [new ParameterType(ParameterType::MIXED)];
         }
 
         /** @var ParameterType[] $acceptableValueTypes */
@@ -110,7 +113,7 @@ abstract class Data
 
         if ($reflectionParameterType instanceof \ReflectionNamedType) {
             $acceptableValueTypes[] = new ParameterType($reflectionParameterType->getName());
-            if ('mixed' !== $reflectionParameterType->getName() && $reflectionParameterType->allowsNull()) {
+            if ($reflectionParameterType->allowsNull() && $reflectionParameterType->getName() !== 'mixed') {
                 $acceptableValueTypes[] = new ParameterType(ParameterType::NULL);
             }
 
