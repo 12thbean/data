@@ -2,7 +2,6 @@
 
 namespace Zendrop\Data\Exceptions;
 
-class CannotCreateData extends BaseException
+class ParserNotFoundException
 {
-
 }
