@@ -18,9 +18,9 @@ Here's how you can define simple data structures for `Person` and `Hobby`:
 <?php
 
 use Zendrop\Data\Attributes\ArrayOf;
-use Zendrop\Data\BaseData;
+use Zendrop\Data\Data;
 
-class Hobby extends BaseData
+class Hobby extends Data
 {
     public function __construct(
         public readonly string $name
