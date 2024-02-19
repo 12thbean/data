@@ -6,13 +6,11 @@ interface ParserInterface
 {
     /**
      * @param ParameterType[] $acceptableTypes
-     * @param \Attribute[]    $attributes
      */
-    public function canHandle(mixed $value, array $acceptableTypes, array $attributes): bool;
+    public function canHandle(mixed $value, array $acceptableTypes): bool;
 
     /**
      * @param ParameterType[] $acceptableTypes
-     * @param \Attribute[]    $attributes
      */
-    public function handle(mixed $value, array $acceptableTypes, array $attributes): mixed;
+    public function handle(mixed $value, array $acceptableTypes): mixed;
 }

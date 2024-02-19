@@ -2,6 +2,7 @@
 
 namespace Zendrop\Data\Parsers;
 
+use Attribute;
 use Zendrop\Data\ArrayOf;
 use Zendrop\Data\Data;
 use Zendrop\Data\Exceptions\InvalidArgumentException;
@@ -20,38 +21,22 @@ class ArrayParser implements ParserInterface
 
     /**
      * @param ParameterType[] $acceptableTypes
-     * @param \Attribute[]    $attributes
      */
-    public function canHandle(mixed $value, array $acceptableTypes, array $attributes): bool
+    public function canHandle(mixed $value, array $acceptableTypes): bool
     {
-        if (null === $this->findAttributeArrayOf($attributes)) {
+        if (null === $this->findTypeArrayOf($acceptableTypes)) {
             return false;
         }
-
-        $this->validateArrayTypeIsAcceptable($acceptableTypes);
-
         return true;
     }
 
     /**
      * @param ParameterType[] $acceptableTypes
-     * @param \Attribute[]    $attributes
      */
-    public function handle(mixed $value, array $acceptableTypes, array $attributes): array
+    public function handle(mixed $value, array $acceptableTypes): array
     {
-        if (null === $value) {
-            return [];
-        }
-
-        $attributeArrayOf = $this->findAttributeArrayOf($attributes);
-
-        if (null === $attributeArrayOf) {
-            throw new InvalidArgumentException(
-                sprintf('Argument `attributes` must contain at least one instance of the `%s` attribute.', ArrayOf::class)
-            );
-        }
-
-        return $this->parseValues($value, $attributeArrayOf);
+        $typeArrayOf = $this->findTypeArrayOf($acceptableTypes);
+        return $this->parseValues($value, $typeArrayOf);
     }
 
     /**
@@ -69,20 +54,6 @@ class ArrayParser implements ParserInterface
     }
 
     /**
-     * @param \Attribute[] $attributes
-     */
-    private function findAttributeArrayOf(array $attributes): ?ArrayOf
-    {
-        foreach ($attributes as $attribute) {
-            if ($attribute instanceof ArrayOf) {
-                return $attribute;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * @param array<int, int|float|string|array> $value
      *
      * @return array<int, int|float|string|Data|\BackedEnum>
@@ -90,27 +61,26 @@ class ArrayParser implements ParserInterface
      * @throws InvalidValueException
      * @throws UnsupportedValueArrayOfException
      */
-    private function parseValues(array $value, ArrayOf $attributeArrayOf): array
+    private function parseValues(array $value, ParameterType $type): array
     {
         $result = [];
 
-        if (class_exists($attributeArrayOf->type)) {
+        if ($type->isObject()) {
             foreach ($value as $item) {
                 $result[] = $this->objectParser->handle(
                     value: $item,
-                    acceptableTypes: [new ParameterType($attributeArrayOf->type)],
-                    attributes: []
+                    acceptableTypes: [$type],
                 );
             }
 
             return $result;
         }
 
-        $filter = match ($attributeArrayOf->type) {
+        $filter = match ($type->type) {
             'int' => FILTER_VALIDATE_INT,
             'float' => FILTER_VALIDATE_FLOAT,
             'string' => FILTER_DEFAULT,
-            default => throw new UnsupportedValueArrayOfException("Unsupported type '{$attributeArrayOf->type}' encountered in ArrayOf attribute. Only 'int', 'float' and 'string' types are supported.")
+            default => throw new UnsupportedValueArrayOfException("Unsupported type '{$type->type}' encountered in ArrayOf attribute. Only 'int', 'float' and 'string' types are supported.")
         };
 
         foreach ($value as $item) {
@@ -118,12 +88,25 @@ class ArrayParser implements ParserInterface
             if (null === $filtered) {
                 $providedType = gettype($item);
                 throw new InvalidValueException(
-                    "Invalid value encountered in the array. Expected a value of type '{$attributeArrayOf->type}', but an incompatible value `{$providedType}` type was found."
+                    "Invalid value encountered in the array. Expected a value of type '{$type->type}', but an incompatible value `{$providedType}` type was found."
                 );
             }
             $result[] = $filtered;
         }
 
         return $result;
+    }
+
+    /**
+     * @param ParameterType[] $acceptableTypes
+     */
+    private function findTypeArrayOf(array $acceptableTypes)
+    {
+        foreach ($acceptableTypes as $type) {
+            if ($type->isList()) {
+                return $type;
+            }
+        }
+        return null;
     }
 }

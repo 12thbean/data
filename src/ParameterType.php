@@ -13,7 +13,8 @@ class ParameterType
     public const MIXED = 'mixed';
 
     public function __construct(
-        public readonly string $type
+        public readonly string $type,
+        public readonly bool $isList = false,
     ) {
     }
 
@@ -55,5 +56,10 @@ class ParameterType
     public function isObject(): bool
     {
         return 'object' === $this->type || class_exists($this->type);
+    }
+
+    public function isList(): bool
+    {
+        return $this->isList;
     }
 }

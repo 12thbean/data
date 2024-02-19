@@ -9,12 +9,12 @@ use Zendrop\Data\ParserInterface;
 
 class ObjectParser implements ParserInterface
 {
-    public function canHandle(mixed $value, array $acceptableTypes, array $attributes): bool
+    public function canHandle(mixed $value, array $acceptableTypes): bool
     {
         return null !== $this->findObjectTypeAmongAcceptableTypes($acceptableTypes);
     }
 
-    public function handle(mixed $value, array $acceptableTypes, array $attributes): ?object
+    public function handle(mixed $value, array $acceptableTypes): ?object
     {
         if (null === $value) {
             return null;
