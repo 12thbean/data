@@ -2,6 +2,7 @@
 
 namespace Zendrop\Data;
 
+use Illuminate\Support\Str;
 use Zendrop\Data\Exceptions\InvalidValueException;
 use Zendrop\Data\Exceptions\ParameterNotFoundException;
 use Zendrop\Data\Parsers\ArrayParser;
@@ -15,10 +16,11 @@ class ConstructorParameterBuilder
 
     public function __construct(
         private readonly string $className,
+        private readonly bool $useStrictKeyMatching
     ) {
         $this->parsers = [
-            new ArrayParser(new ObjectParser()),
-            new ObjectParser(),
+            new ArrayParser(new ObjectParser($useStrictKeyMatching)),
+            new ObjectParser($useStrictKeyMatching),
             new GenericParser(),
         ];
     }
@@ -34,6 +36,11 @@ class ConstructorParameterBuilder
      */
     public function parse(array $payload): array
     {
+        // Convert keys to camelCase if strict key matching is not required
+        if (!$this->useStrictKeyMatching) {
+            $payload = $this->normalizePayloadKeys($payload);
+        }
+
         $reflectionClass = new \ReflectionClass($this->className);
         $constructorParameters = $reflectionClass->getConstructor()->getParameters();
 
@@ -44,6 +51,7 @@ class ConstructorParameterBuilder
                 if ($constructorParameter->isDefaultValueAvailable()) {
                     $parsedValues[$parameterName] = $constructorParameter->getDefaultValue();
                 }
+
                 continue;
             }
 
@@ -138,5 +146,15 @@ class ConstructorParameterBuilder
         }
 
         return null;
+    }
+
+    private function normalizePayloadKeys(array $payload): array
+    {
+        $normalizedPayload = [];
+        foreach ($payload as $key => $value) {
+            $normalizedPayload[Str::camel($key)] = $value;
+        }
+
+        return $normalizedPayload;
     }
 }

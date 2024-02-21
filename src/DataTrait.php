@@ -2,11 +2,10 @@
 
 namespace Zendrop\Data;
 
-use Illuminate\Support\Str;
 use Zendrop\Data\Exceptions\InvalidValueException;
 use Zendrop\Data\Exceptions\ParameterNotFoundException;
 
-abstract class Data
+trait DataTrait
 {
     /**
      * @param array<string, mixed> $payload
@@ -16,26 +15,29 @@ abstract class Data
      */
     public static function from(array $payload, bool $useStrictKeyMatching = false): static
     {
-        // Convert keys to camelCase if strict key matching is not required
-        if (!$useStrictKeyMatching) {
-            $payload = self::normalizePayloadKeys($payload);
-        }
-
         // Convert values to the expected types
-        $valueParser = new ConstructorParameterBuilder(static::class);
+        $valueParser = new ConstructorParameterBuilder(static::class, $useStrictKeyMatching);
         $constructorParameters = $valueParser->parse($payload);
 
         // instantiate the class with the parsed values
         return new (static::class)(...$constructorParameters);
     }
 
-    private static function normalizePayloadKeys(array $payload): array
+    /**
+     * @param array<int, array<string, mixed>> $payload
+     *
+     * @return array<int, static>
+     *
+     * @throws InvalidValueException
+     * @throws ParameterNotFoundException
+     */
+    public static function arrayFrom(array $payload, bool $useStrictKeyMatching = false): array
     {
-        $normalizedPayload = [];
-        foreach ($payload as $key => $value) {
-            $normalizedPayload[Str::camel($key)] = $value;
+        $result = [];
+        foreach ($payload as $item) {
+            $result[] = static::from($item, $useStrictKeyMatching);
         }
 
-        return $normalizedPayload;
+        return $result;
     }
 }

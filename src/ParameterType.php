@@ -5,11 +5,17 @@ namespace Zendrop\Data;
 class ParameterType
 {
     public const NULL = 'null';
+
     public const BOOL = 'bool';
+
     public const INT = 'int';
+
     public const FLOAT = 'float';
+
     public const STRING = 'string';
+
     public const ARRAY = 'array';
+
     public const MIXED = 'mixed';
 
     public function __construct(
