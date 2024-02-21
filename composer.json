@@ -1,5 +1,7 @@
 {
     "name": "zendrop/data",
+    "description": "This package allows you to created DataTransferObjects without pain",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Zendrop\\Data\\": "src/"
@@ -25,5 +27,8 @@
         "laravel/pint": "^1.13",
         "phpstan/phpstan": "^1.10",
         "phpunit/phpunit": "^9.0"
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
     }
 }
