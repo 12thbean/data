@@ -11,9 +11,9 @@ composer require zendrop/data
 ## How To Use
 
 ### Creating Data Models
-1) **Implement Interfaces:** Your models should implement DataInterface and ToArrayInterface.
-2) **Use Traits:** Incorporate DataTrait and ToArrayTrait for functionality.
-3) **Handle Arrays:** For validating arrays, use the ArrayOf attribute. Mark fields that can be skipped with Skippable.
+1) **Implement Interfaces:** Your models should implement `DataInterface` and `ToArrayInterface`.
+2) **Use Traits:** Incorporate `DataTrait` and `ToArrayTrait` for functionality.
+3) **Handle Arrays:** For validating arrays, use the `ArrayOf` attribute. Mark fields that can be skipped with Skippable.
 4) **Nested Structures:** You can create models within models.
 5) **Enums:** Use BackedEnum for enum types.
 
