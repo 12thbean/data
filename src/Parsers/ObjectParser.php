@@ -2,13 +2,17 @@
 
 namespace Zendrop\Data\Parsers;
 
-use Zendrop\Data\Data;
-use Zendrop\Data\Exceptions\ObjectInstantiatingException;
+use Zendrop\Data\DataInterface;
 use Zendrop\Data\ParameterType;
 use Zendrop\Data\ParserInterface;
 
 class ObjectParser implements ParserInterface
 {
+    public function __construct(
+        private readonly bool $useStrictKeyMatching
+    ) {
+    }
+
     public function canHandle(mixed $value, array $acceptableTypes): bool
     {
         return null !== $this->findObjectTypeAmongAcceptableTypes($acceptableTypes);
@@ -44,15 +48,19 @@ class ObjectParser implements ParserInterface
     }
 
     /**
-     * @param class-string<Data|\BackedEnum>             $className
+     * @param class-string<DataInterface|\BackedEnum>    $className
      * @param array<string, mixed>|int|float|string|bool $value
      */
     private function instantiateObject(string $className, array|int|float|string|bool $value): object
     {
-        if (is_subclass_of($className, Data::class) || is_subclass_of($className, \BackedEnum::class)) {
+        if (is_subclass_of($className, \BackedEnum::class)) {
             return $className::from($value);
         }
 
-        throw new ObjectInstantiatingException('Instantiated object should be inheritor of `'.Data::class.'` or `'.\BackedEnum::class.'`');
+        if (is_subclass_of($className, DataInterface::class)) {
+            return $className::from($value, $this->useStrictKeyMatching);
+        }
+
+        return new ($className)(...$value);
     }
 }

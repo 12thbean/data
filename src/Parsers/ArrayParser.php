@@ -2,7 +2,7 @@
 
 namespace Zendrop\Data\Parsers;
 
-use Zendrop\Data\Data;
+use Zendrop\Data\DataInterface;
 use Zendrop\Data\Exceptions\InvalidAttributeException;
 use Zendrop\Data\Exceptions\InvalidValueException;
 use Zendrop\Data\Exceptions\UnsupportedValueArrayOfException;
@@ -55,7 +55,7 @@ class ArrayParser implements ParserInterface
     /**
      * @param array<int, int|float|string|array> $value
      *
-     * @return array<int, int|float|string|Data|\BackedEnum>
+     * @return array<int, int|float|string|DataInterface|\BackedEnum>
      *
      * @throws InvalidValueException
      * @throws UnsupportedValueArrayOfException
