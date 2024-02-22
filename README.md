@@ -56,8 +56,8 @@ class User implements DataInterface, ToArrayInterface
         
         public readonly string $userName,
         
+        /** @var Tag[] */
         #[ArrayOf(Tag::class)]
-        /** @var Tag[] $tags */
         public readonly array $tags,
         
         public readonly Occupation $occupation,
