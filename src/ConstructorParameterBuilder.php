@@ -7,6 +7,7 @@ use Zendrop\Data\Exceptions\InvalidValueException;
 use Zendrop\Data\Exceptions\ParameterNotFoundException;
 use Zendrop\Data\Parsers\ArrayParser;
 use Zendrop\Data\Parsers\GenericParser;
+use Zendrop\Data\Parsers\NullParser;
 use Zendrop\Data\Parsers\ObjectParser;
 
 class ConstructorParameterBuilder
@@ -19,6 +20,7 @@ class ConstructorParameterBuilder
         private readonly bool $useStrictKeyMatching
     ) {
         $this->parsers = [
+            new NullParser(),
             new ArrayParser(new ObjectParser($useStrictKeyMatching)),
             new ObjectParser($useStrictKeyMatching),
             new GenericParser(),

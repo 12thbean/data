@@ -4,3 +4,5 @@
 /.vscode/        # For Visual Studio Code
 /.DS_Store       # For macOS
 Thumbs.db        # For Windows
+.phpunit.result.cache
+.devcontainer

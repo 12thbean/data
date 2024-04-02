@@ -18,12 +18,8 @@ class ObjectParser implements ParserInterface
         return null !== $this->findObjectTypeAmongAcceptableTypes($acceptableTypes);
     }
 
-    public function handle(mixed $value, array $acceptableTypes): ?object
+    public function handle(mixed $value, array $acceptableTypes): object
     {
-        if (null === $value) {
-            return null;
-        }
-
         $targetType = $this->findObjectTypeAmongAcceptableTypes($acceptableTypes);
 
         if (!$targetType) {
