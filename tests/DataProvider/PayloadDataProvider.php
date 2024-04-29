@@ -33,6 +33,7 @@ class PayloadDataProvider
             ],
             'colors' => ['white', 'red', 'green'],
             'isCool' => 'On',
+            'motorbike' => 'Kawasaki Ninja 400'
         ];
 
         return $useSnakeCase ? self::convertKeysToSnakeCase($array) : $array;
@@ -65,6 +66,7 @@ class PayloadDataProvider
             ],
             'colors' => ['white', 'red', 'green'],
             'isCool' => true,
+            'motorbike' => 'Kawasaki Ninja 400'
         ];
 
         return $useSnakeCase ? self::convertKeysToSnakeCase($array) : $array;

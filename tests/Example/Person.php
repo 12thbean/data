@@ -36,6 +36,8 @@ class Person implements DataInterface, ToArrayInterface
         public readonly array $colors,
 
         public readonly string|Skippable $car = Skippable::Skipped,
+
+        public readonly string|Skippable $motorbike = Skippable::Skipped,
     ) {
     }
 }
