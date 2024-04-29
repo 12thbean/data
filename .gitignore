@@ -1,5 +1,6 @@
 /vendor/
 /composer.lock
+/composer.phar
 /.idea          # For JetBrains IDEs like PhpStorm
 /.vscode/        # For Visual Studio Code
 /.DS_Store       # For macOS

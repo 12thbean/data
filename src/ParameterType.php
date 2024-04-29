@@ -59,9 +59,14 @@ class ParameterType
         return self::MIXED === $this->type;
     }
 
+    public function isSkippable(): bool
+    {
+        return is_a($this->type, Skippable::class, true);
+    }
+
     public function isObject(): bool
     {
-        return 'object' === $this->type || class_exists($this->type);
+        return ('object' === $this->type || class_exists($this->type)) && !$this->isSkippable();
     }
 
     public function isList(): bool

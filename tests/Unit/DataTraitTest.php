@@ -2,6 +2,7 @@
 
 namespace Zendrop\Data\Tests\Unit;
 
+use Zendrop\Data\Skippable;
 use Zendrop\Data\Tests\DataProvider\PayloadDataProvider;
 use Zendrop\Data\Tests\Example\Color;
 use Zendrop\Data\Tests\Example\Hobby;
@@ -46,6 +47,10 @@ class DataTraitTest extends TestCase
             $this->assertInstanceOf(Color::class, $color);
             $this->assertEquals($payload['colors'][$index], $color->value);
         }
+
+        // Test skippable
+        $this->assertEquals(Skippable::Skipped, $createdObject->car);
+        $this->assertNotEquals(Skippable::Skipped, $createdObject->motorbike);
     }
 
     public function testDataCreatingFromSnakeCasedPayload()
