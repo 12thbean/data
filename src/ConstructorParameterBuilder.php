@@ -46,7 +46,7 @@ class ConstructorParameterBuilder
         $reflectionClass = new \ReflectionClass($this->className);
         $constructorParameters = $reflectionClass->getConstructor()->getParameters();
 
-        $parsedValues = $payload;
+        $parsedValues = [];
         foreach ($constructorParameters as $constructorParameter) {
             $parameterName = $constructorParameter->getName();
             if (!array_key_exists($parameterName, $payload)) {
